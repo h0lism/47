@@ -34,61 +34,66 @@ function getAnchorLink(filePath, linkTitle) {
   return `<a ${Object.keys(attributes).map(key => `${key}="${attributes[key]}"`).join(" ")}>${innerHTML}</a>`;
 }
 
-function getAnchorAttributes(filePath, linkTitle) {
-  let fileName = filePath.replaceAll("&amp;", "&");
-  let header = "";
-  let headerLinkPath = "";
-  if (filePath.includes("#")) {
-    [fileName, header] = filePath.split("#");
-    headerLinkPath = `#${headerToId(header)}`;
-  }
+function getAnchorAttributes(filePath, linkTitle) { // Modify THIS function
+    let fileName = filePath.replaceAll("&amp;", "&");
+    let header = "";
+    let headerLinkPath = "";
+    if (filePath.includes("#")) {
+        [fileName, header] = filePath.split("#");
+        headerLinkPath = `#${headerToId(header)}`;
+    }
 
-  let noteIcon = process.env.NOTE_ICON_DEFAULT;
-  const title = linkTitle ? linkTitle : fileName;
-  let permalink = `/notes/${slugify(filePath)}`;
-  let deadLink = false;
-  try {
-    const startPath = "./src/site/notes/";
-    const fullPath = fileName.endsWith(".md")
-      ? `${startPath}${fileName}`
-      : `${startPath}${fileName}.md`;
-    const file = fs.readFileSync(fullPath, "utf8");
-    const frontMatter = matter(file);
-    if (frontMatter.data.permalink) {
-      permalink = frontMatter.data.permalink;
-    }
-    if (
-      frontMatter.data.tags &&
-      frontMatter.data.tags.indexOf("gardenEntry") != -1
-    ) {
-      permalink = "/";
-    }
-    if (frontMatter.data.noteIcon) {
-      noteIcon = frontMatter.data.noteIcon;
-    }
-  } catch {
-    deadLink = true;
-  }
+    let noteIcon = process.env.NOTE_ICON_DEFAULT;
+    const title = linkTitle ? linkTitle : fileName;
+    let permalink = `/notes/${slugify(filePath)}`;
 
-  if (deadLink) {
+    console.log("Original filePath (dataview):", filePath);
+    console.log("Slugified permalink (dataview):", permalink);
+
+    let deadLink = false;
+    try {
+        const startPath = "./src/site/notes/";
+        const fullPath = fileName.endsWith(".md")
+          ? `<span class="math-inline">\{startPath\}</span>{fileName}`
+          : `<span class="math-inline">\{startPath\}</span>{fileName}.md`;
+        const file = fs.readFileSync(fullPath, "utf8");
+        const frontMatter = matter(file);
+        if (frontMatter.data.permalink) {
+            permalink = frontMatter.data.permalink;
+            console.log("Frontmatter permalink (dataview):", permalink);
+        }
+        if (
+            frontMatter.data.tags &&
+            frontMatter.data.tags.indexOf("gardenEntry") != -1
+        ) {
+            permalink = "/";
+            console.log("gardenEntry permalink (dataview):", permalink);
+        }
+    } catch (e) {
+        deadLink = true;
+        console.error("Error reading frontmatter (dataview):", e);
+    }
+
+    console.log("Final permalink (dataview):", `<span class="math-inline">\{permalink\}</span>{headerLinkPath}`);
+    if (deadLink) {
+        return {
+            attributes: {
+                "class": "internal-link is-unresolved",
+                "href": "/404",
+                "target": "",
+            },
+            innerHTML: title,
+        };
+    }
     return {
-      attributes: {
-        "class": "internal-link is-unresolved",
-        "href": "/404",
-        "target": "",
-      },
-      innerHTML: title,
-    }
-  }
-  return {
-    attributes: {
-      "class": "internal-link",
-      "target": "",
-      "data-note-icon": noteIcon,
-      "href": `${permalink}${headerLinkPath}`,
-    },
-    innerHTML: title,
-  }
+        attributes: {
+            "class": "internal-link",
+            "target": "",
+            "data-note-icon": noteIcon,
+            "href": `<span class="math-inline">\{permalink\}</span>{headerLinkPath}`,
+        },
+        innerHTML: title,
+    };
 }
 
 const tagRegex = /(^|\s|\>)(#[^\s!@#$%^&*()=+\.,\[{\]};:'"?><]+)(?!([^<]*>))/g;
